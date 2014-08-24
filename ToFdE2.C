@@ -78,14 +78,12 @@ void ToFdE2(){
   ym=0;
   xm=0;
 
-  TF1*  fFit[6][24];
-
-
   for(Int_t i=0; i<6; i++){
     c1[i] = new TCanvas(Form("c1_%02d",i+1), Form("c1_%02d",i+1),1350,950);
     c1[i]->Divide(4,6);
     for(Int_t j=0; j<24; j++){
-	  
+      c1[i]->cd(j+1);
+
       name = Form("hToFFWCdEFWC_bin%02d_ifwc%02d",i+1,j+1);
       hToFdE[i][j] = (TH2D*)f->Get(name);
 
@@ -142,12 +140,10 @@ void ToFdE2(){
 
     //  cout<<endl;
     //________________ADDED END__________________//*/
-  		
-  	  TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,10);
-  	  g0->SetParameters(1,1,xm,ym);
+  	  TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
+  		g0->SetParameters(1,1,xm,ym);
 
       pp[i][j] = hToFdE[i][j]->ProfileX();
-      c1[i]->cd(j+1);
       pp[i][j]->Fit("g0","IQ","",maxt+2*merrx, 38.);
       hToFdE[i][j]->GetYaxis()->SetRangeUser(TrigThreshFWC2[j], TrigThreshFWC2[j]+2000.);
       hToFdE[i][j]->GetXaxis()->SetRangeUser(0., 50.);
