@@ -150,7 +150,13 @@ void ToFdE2(){
 
       	hToFdE[i][j]->Draw("colz");
       	pp[i][j]->GetFunction("g0")->Draw("same");
-
+      //TImage *img = TImage::Create();
+      //img->FromPad(c1);
+      //img->WriteImage("canvas"+Form("%d_%d",i,j)+".png");
+        if (j==23)
+        {
+            c1[i]->SaveAs(Form("canvas%d.jpg",i,j));
+        }
     }
   }
 
