@@ -70,35 +70,35 @@ void ToFdE2(){
 
   TFile*  f = new TFile("run41800dETI.root");
   TString name;
-
-  TCanvas* c1[6];
+  TCanvas* c1[24];
   TH2D* hToFdE[6][24];
-  TProfile* pp[6][24];
+  //TProfile* pp[6][24];
+  TProfile* pp;
 
   ym=0;
   xm=0;
 
-  for(Int_t i=0; i<6; i++){
+  for(Int_t i=0; i<24; i++){
     c1[i] = new TCanvas(Form("c1_%02d",i+1), Form("c1_%02d",i+1),1350,950);
-    c1[i]->Divide(4,6);
-    for(Int_t j=0; j<24; j++){
+    c1[i]->Divide(2,3);
+    for(Int_t j=0; j<6; j++){
       c1[i]->cd(j+1);
 
-      name = Form("hToFFWCdEFWC_bin%02d_ifwc%02d",i+1,j+1);
-      hToFdE[i][j] = (TH2D*)f->Get(name);
+      name = Form("hToFFWCdEFWC_bin%02d_ifwc%02d",j+1,i+1);
+      hToFdE[j][i] = (TH2D*)f->Get(name);
 
     //________________ADDED BEGIN__________________//
 
-      hdE=hToFdE[i][j];
+      hdE=hToFdE[j][i];
 
       //err x and y
       //So here I fit x coordinate of THE point
       //Then I calculate where I would like to cut the whole thing off
       TF1* g1 = new TF1("g1","gaus",15.,28.);
-      Double_t maxt = ToFFWCTheta[i];
+      Double_t maxt = ToFFWCTheta[j];
       hdE->ProjectionX("hproj1")->Fit("g1", "IQ", "", maxt-2.5, maxt+2.5);
       merrx = g1->GetParameter(2);
-      cutx = maxt+3*merrx;
+      cutx = maxt+1*merrx;
       
 
       //Same for y.
@@ -117,7 +117,7 @@ void ToFdE2(){
     //  cout<<"cut: "<<cutx<<" "<<cuty<<endl;
 
       nbinsx = hdE->GetXaxis()->FindBin(38.);     
-      nbinx0 = hdE->GetXaxis()->FindBin(maxt+4*merrx);
+      nbinx0 = hdE->GetXaxis()->FindBin(maxt+cutx);
 
       //I set range of fitting in y
       Int_t up = hdE->GetYaxis()->GetNbins();
@@ -143,19 +143,19 @@ void ToFdE2(){
   	  TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
   		g0->SetParameters(1,1,xm,ym);
 
-      pp[i][j] = hToFdE[i][j]->ProfileX();
-      pp[i][j]->Fit("g0","IQ","",maxt+2*merrx, 38.);
-      hToFdE[i][j]->GetYaxis()->SetRangeUser(TrigThreshFWC2[j], TrigThreshFWC2[j]+2000.);
-      hToFdE[i][j]->GetXaxis()->SetRangeUser(0., 50.);
+      pp = hdE->ProfileX();
+      //pp[i][j]->Fit("g0","IQ","",maxt+3*merrx, 38.);
+      pp->Fit("g0","IQ","",cutx, 38.);
 
-      	hToFdE[i][j]->Draw("colz");
-      	pp[i][j]->GetFunction("g0")->Draw("same");
-      //TImage *img = TImage::Create();
-      //img->FromPad(c1);
-      //img->WriteImage("canvas"+Form("%d_%d",i,j)+".png");
-        if (j==23)
+      hdE->GetYaxis()->SetRangeUser(TrigThreshFWC2[i]-400, TrigThreshFWC2[i]+2000.);
+      hdE->GetXaxis()->SetRangeUser(0., 50.);
+
+      	hdE->Draw("colz");
+      	pp->GetFunction("g0")->Draw("same");
+
+        if (j==5)
         {
-            c1[i]->SaveAs(Form("canvas%d.jpg",i,j));
+            c1[i]->SaveAs(Form("canvas%d.pdf",i+1));
         }
     }
   }
