@@ -72,15 +72,18 @@ void ToFdE2(){
   TString name;
   TCanvas* c1[24];
   TH2D* hToFdE[6][24];
+  //TH2D hdE;
   TProfile* pp[24][6];
-  //TProfile* pp;
+  TProfile* ppfail[24][6];
+  Int_t NEDC=0; //Not Enough Data Counter
 
   ym=0;
   xm=0;
 
-  for(Int_t i=0; i<5; i++){
+  for(Int_t i=0; i<24; i++){
     c1[i] = new TCanvas(Form("c1_%02d",i+1), Form("c1_%02d",i+1),1350,950);
     c1[i]->Divide(2,3);
+    Int_t FailCounter=0;
     for(Int_t j=0; j<6; j++){
       c1[i]->cd(j+1);
 
@@ -142,33 +145,42 @@ void ToFdE2(){
     //  cout<<endl;
     //________________ADDED END__________________//*/
   	  TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
+      TF1 *g0fail = new TF1("g0fail","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
+
   		g0->SetParameters(1,1,xm,ym);
+      g0fail->SetParameters(1,1,xm,ym);
+
 
       pp[i][j] = hdE->ProfileX();
       pp[i][j]->Fit("g0","IQ","",cutx, 38.);
+      //TH2D *hnew = (TH1F*)hdE->Clone("hnew");
+      //ppfail[i][j] = hnew->ProfileX();
+      //ppfail[i][j]->Fit("g0fail","IQ","",cutx, 38.);
 
       hdE->GetYaxis()->SetRangeUser(TrigThreshFWC2[i]-400, TrigThreshFWC2[i]+2000.);
       hdE->GetXaxis()->SetRangeUser(0., 50.);
 
       	hdE->Draw("colz");
-        Int_t FailCounter=0;
         if(nentr>3000){
           pp[i][j]->GetFunction("g0")->Draw("same");
           FailCounter=0;
         }
         else if(nentr<3000 && j!=0 && FailCounter<=j){
-          cout<<"Achtung! "<<i+1<<" "<<j+1<<endl;
           FailCounter++;
-          TProfile *BuforFunction;
-          BuforFunction = pp[i][j-FailCounter];
-          BuforFunction->GetFunction("g0")->SetLineColor(3);
-          BuforFunction->GetFunction("g0")->Draw("same");
-          //pp[i][j-1]->GetFunction("g0")->SetLineColor(1);
+          NEDC++;
+          cout<<"Achtung! "<<i+1<<" "<<j+1<<" Fail no.: "<<FailCounter<<" Total Fails: "<<NEDC<<endl;
+          pp[i][j-FailCounter]->GetFunction("g0")->SetLineColor(2);
+          pp[i][j-FailCounter]->GetFunction("g0")->Draw("same");
+          pp[i][j]->GetFunction("g0")->Draw("same");
+
+
+        //  ppfail[i][j-FailCounter]->GetFunction("g0fail")->SetLineColor(2);
+        //  ppfail[i][j-FailCounter]->GetFunction("g0fail")->Draw("same");
           }
 
         if (j==5)
         {
-            //c1[i]->SaveAs(Form("canvas%d.pdf",i+1));
+            c1[i]->SaveAs(Form("canvas%d.pdf",i+1));
         }
     }
   }
