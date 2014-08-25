@@ -72,8 +72,11 @@ void ToFdE2(){
   TString name;
   TCanvas* c1[24];
   TH2D* hToFdE[6][24];
-  //TH2D hdE;
+  TH2D* hdE;
   TProfile* pp[24][6];
+  TProfile ppLin[24];
+  Int_t noPeakFlag=0;
+
   TProfile* ppfail[24][6];
   Int_t NEDC=0; //Not Enough Data Counter
 
@@ -116,8 +119,16 @@ void ToFdE2(){
       maxy = g2->GetParameter(1);
 
       //cout<<"i: "<<i<<" j :"<<j<<endl;
-    //  cout<<"err: "<<merrx<<" "<<merry<<endl;
-    //  cout<<"cut: "<<cutx<<" "<<cuty<<endl;
+      //cout<<"Amp: "<<g1->GetParameter(0) <<" "<< g2->GetParameter(0)<<endl;
+      //cout<<"mean: "<<g1->GetParameter(1) <<" "<< g2->GetParameter(1)<<endl;
+      //cout<<"std: "<<merrx<<" "<<merry<<endl;
+      //cout<<"cut: "<<cutx<<" "<<cuty<<endl;
+
+      //Check if there is a distinct peak.
+      if(g1->GetParameter(0)<200 || g2->GetParameter(0))
+        noPeakFlag=1;
+      else
+        noPeakFlag=0;
 
       nbinsx = hdE->GetXaxis()->FindBin(38.);     
       nbinx0 = hdE->GetXaxis()->FindBin(maxt+cutx);
@@ -144,24 +155,39 @@ void ToFdE2(){
 
     //  cout<<endl;
     //________________ADDED END__________________//*/
+
+      if(noPeakFlag){
   	  TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
-      TF1 *g0fail = new TF1("g0fail","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
-
-  		g0->SetParameters(1,1,xm,ym);
-      g0fail->SetParameters(1,1,xm,ym);
-
-
+      g0->SetParameters(1,1,xm,ym);
       pp[i][j] = hdE->ProfileX();
       pp[i][j]->Fit("g0","IQ","",cutx, 38.);
-      //TH2D *hnew = (TH1F*)hdE->Clone("hnew");
-      //ppfail[i][j] = hnew->ProfileX();
-      //ppfail[i][j]->Fit("g0fail","IQ","",cutx, 38.);
+
+      }
+      else {
+      TF1 *g0 = new TF1("g0","pol2(0)",0,40);
+      //TF1 *gLin = new TF1("gLin", "pol1(0)",0,40);
+
+      g0->SetParameters(1,1,1);
+      //g0->SetParameters(1,1,1);
+      //gLin->SetParameters(1,1);
+
+      pp[i][j] = hdE->ProfileX();
+      //pp[i][j] -> Copy(&ppLin);
+      //ppLin[i] = hdE->ProfileX();
+
+      //ACHTUNG! Arbitralnie wybrane 20 !!!
+      pp[i][j]->Fit("g0","IQ","",20., 38.);
+      //pp[i][j]->Fit("gLin","IQ","",20,38);
+      //ppLin[i]->Fit("gLin","IQ","",20., 38.);
+
+      }
+
 
       hdE->GetYaxis()->SetRangeUser(TrigThreshFWC2[i]-400, TrigThreshFWC2[i]+2000.);
       hdE->GetXaxis()->SetRangeUser(0., 50.);
 
       	hdE->Draw("colz");
-        if(nentr>3000){
+        if(noPeakFlag==0{
           pp[i][j]->GetFunction("g0")->Draw("same");
           FailCounter=0;
         }
@@ -172,16 +198,23 @@ void ToFdE2(){
           pp[i][j-FailCounter]->GetFunction("g0")->SetLineColor(2);
           pp[i][j-FailCounter]->GetFunction("g0")->Draw("same");
           pp[i][j]->GetFunction("g0")->Draw("same");
-
-
-        //  ppfail[i][j-FailCounter]->GetFunction("g0fail")->SetLineColor(2);
-        //  ppfail[i][j-FailCounter]->GetFunction("g0fail")->Draw("same");
-          }
-
-        if (j==5)
-        {
-            c1[i]->SaveAs(Form("canvas%d.pdf",i+1));
         }
+        else if(nentr<3000 && j==0){
+          FailCounter++;
+          NEDC++;
+          cout<<"Achtung! "<<i+1<<" "<<j+1<<" Fail no.: "<<FailCounter<<" Total Fails: "<<NEDC<<endl;
+          pp[i][j]->GetFunction("g0")->SetLineColor(2);
+          pp[i][j]->GetFunction("g0")->Draw("same");
+
+        }
+        else{ NEDC++;}
+
+
+        
+      
+      if(j==5){    
+            c1[i]->SaveAs(Form("canvas%d.pdf",i+1));
+      }
     }
   }
 
