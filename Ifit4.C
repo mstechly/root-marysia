@@ -37,12 +37,18 @@ Double_t merrx, merry;
 Double_t cutx, cuty; 
 Double_t xm, ym;
 Int_t nbinsx, nbinsy, nbinx0;
+Int_t noPeakFlag;
+
 
 //______________________________________________________________________________
 Double_t func(float x ,Double_t *par){
-  //par[2] = ym - xm*xm*par[0] - xm*par[1];
-  Double_t value=par[0]*x*x + par[1]*x + (ym - xm*xm*par[0] - xm*par[1]);
-  //  Double_t value=par[0]*x*x + par[1]*x + (par[2]);
+  Double_t value;
+  if(noPeakFlag==0){
+  value=par[0]*x*x + par[1]*x + (ym - xm*xm*par[0] - xm*par[1]);
+  }
+  else{
+    value=par[0]*x*x+par[1]*x+par[2];
+  }
  return value;
 }
 //______________________________________________________________________________
@@ -140,7 +146,6 @@ void Ifit4()
   TH2D* hdEToF[6][24];
   TF1*  fFit[6][24];
   TProfile* pp[24][6];
-  Int_t noPeakFlag=0;
  
   for(Int_t el = 1; el<25; el++){
     Double_t vstart[3]; 
@@ -222,10 +227,7 @@ void Ifit4()
       pp[el-1][bin-1] = hdE->ProfileX();
       pp[el-1][bin-1]->Fit("g0","IQ","",maxt, 38.);
       }
-      //TF1* g0 = new TF1("g0","pol2",15.,38.);
-      //pp[el-1][bin-1] = hdE->ProfileX();
-      //pp[el-1][bin-1]->Fit("g0","IQ","0",maxt-5*merrx,/*hdE->GetXaxis()->GetBinCenter(nbinsx)*/38.);   
-      
+
       //initialize TMinuit with a maximum of 3 params
       ierflg = 0;
       arglist[0] = 1;
@@ -236,16 +238,19 @@ void Ifit4()
       if(noPeakFlag==0){
 	     vstart[0] = g0->GetParameter(0);
 	     vstart[1] = g0->GetParameter(1);
-	     //vstart[2] = g0->GetParameter(0);
       }
       else{
        vstart[0] = 0;
        vstart[1] = g0->GetParameter(1);
+       vstart[2] = g0->GetParameter(0);
       }
 
       Double_t step[3] = {0.001 ,0.1 , 10.};
       minuit->mnparm(0, "a", vstart[0], step[0], 0,0,ierflg);
       minuit->mnparm(1, "b", vstart[1], step[1], 0,0,ierflg);
+      if(noPeakFlag!=0){
+      minuit->mnparm(2, "c", vstart[2], step[2]*1000, 0,0,ierflg);
+      }
       //minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
       
       // Now ready for minimization step
@@ -261,7 +266,7 @@ void Ifit4()
       
       // get parameters
       
-      double pval[2],perr[2],plo[2],phi[2];
+      double pval[3],perr[3],plo[3],phi[3];
       
       TString para0,para1,para2;
       
@@ -269,13 +274,20 @@ void Ifit4()
       
       minuit->mnpout(0,para0,pval[0],perr[0],plo[0],phi[0],istat);
       minuit->mnpout(1,para1,pval[1],perr[1],plo[1],phi[1],istat);
-      //minuit->mnpout(2,para2,pval[2],perr[2],plo[2],phi[2],istat);
+      if(noPeakFlag!=0){
+      minuit->mnpout(2,para2,pval[2],perr[2],plo[2],phi[2],istat);
+      }
+      //
       
       fFit[bin-1][el-1] = new TF1(Form("fFit_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
       fFit[bin-1][el-1]->FixParameter(2, pval[0]);
       fFit[bin-1][el-1]->FixParameter(1, pval[1]);
+      if(noPeakFlag==0)
       fFit[bin-1][el-1]->FixParameter(0, ym - pval[0]*xm*xm - pval[1]*xm);
-      //fFit[bin-1][el-1]->FixParameter(0, pval[2]);
+      else{
+      fFit[bin-1][el-1]->FixParameter(0, pval[2]);
+      fFit[bin-1][el-1]->SetLineColor(2);
+      }
     }
   }
 
