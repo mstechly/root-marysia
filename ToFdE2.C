@@ -40,8 +40,6 @@ void ToFdE2(){
       2000,1700,1900,2200,1500,1600,
       1200,1700,1600,1500,1500,1500
     };
-
-    //________________ADDED BEGIN__________________// */
     
     Double_t merrx, merry;
     Double_t cutx, cuty; 
@@ -65,7 +63,6 @@ void ToFdE2(){
     if(IsFWC1)  ToFFWCTheta[i] = ToFFWC1Theta[i];
    else ToFFWCTheta[i] = ToFFWC2Theta[i];
   }
-    //________________ADDED END__________________// */
 
 
   TFile*  f = new TFile("run41800dETI.root");
@@ -93,7 +90,6 @@ void ToFdE2(){
       name = Form("hToFFWCdEFWC_bin%02d_ifwc%02d",j+1,i+1);
       hToFdE[j][i] = (TH2D*)f->Get(name);
 
-    //________________ADDED BEGIN__________________//
 
       hdE=hToFdE[j][i];
 
@@ -140,7 +136,6 @@ void ToFdE2(){
       Int_t up = hdE->GetYaxis()->GetNbins();
       nbinsy = up;            
       Int_t nentr = hdE->GetEntries();
-      //cout << "Number of Entries: " << nentr <<endl;
 
       for(Int_t counter=0; counter<nbinsy; counter++){
       if(i<maxy) continue;
@@ -155,32 +150,27 @@ void ToFdE2(){
       ym = maxdE;
       xm = hdE->GetXaxis()->GetBinCenter(hdE->ProjectionX()->GetMaximumBin());
     //  cout<<" xm, ym: "<<xm<<" "<<ym<<endl;
-
     //  cout<<endl;
-    //________________ADDED END__________________//*/
 
+      //If there is a distinct peak, we are fitting function fixing it in the peak.
       if(noPeakFlag==0){
   	  TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
       g0->SetParameters(1,1,xm,ym);
       pp[i][j] = hdE->ProfileX();
       pp[i][j]->Fit("g0","IQ","",cutx, 38.);
       }
+      //If not, we can fit pol2 or pol1
       else {
+      //TF1 *g0 = new TF1("g0","pol2(0)",0,40);
       TF1 *g0 = new TF1("g0","pol1(0)",0,40);
-      //TF1 *gLin = new TF1("gLin", "pol1(0)",0,40);
 
       //g0->SetParameters(1,1,1);
       g0->SetParameters(1,1);
-      //gLin->SetParameters(1,1);
 
       pp[i][j] = hdE->ProfileX();
-      //pp[i][j] -> Copy(&ppLin);
-      //ppLin[i] = hdE->ProfileX();
 
       //ACHTUNG! Arbitralnie wybrane 20 !!!
       pp[i][j]->Fit("g0","IQ","",20., 38.);
-      //pp[i][j]->Fit("gLin","IQ","",20,38);
-      //ppLin[i]->Fit("gLin","IQ","",20., 38.);
 
       }
 
@@ -188,11 +178,13 @@ void ToFdE2(){
       hdE->GetYaxis()->SetRangeUser(TrigThreshFWC2[i]-400, TrigThreshFWC2[i]+2000.);
       hdE->GetXaxis()->SetRangeUser(0., 50.);
 
+        //If there is a peak, function is drawn in black
       	hdE->Draw("colz");
         if(noPeakFlag==0){
           pp[i][j]->GetFunction("g0")->Draw("same");
           FailCounter=0;
         }
+        //If there is no peak, previous function is drawn in red on its canvas and on top of the current canvas.
         else if(noPeakFlag==1 && j!=0 && FailCounter<=j){
           FailCounter++;
           NEDC++;
@@ -201,6 +193,7 @@ void ToFdE2(){
           pp[i][j-FailCounter]->GetFunction("g0")->Draw("same");
           pp[i][j]->GetFunction("g0")->Draw("same");
         }
+        //If there is no peak and we are in the first bin, function is drawn in green.
         else if(noPeakFlag==1 && j==0){
           FailCounter++;
           NEDC++;
@@ -209,11 +202,10 @@ void ToFdE2(){
           pp[i][j]->GetFunction("g0")->Draw("same");
 
         }
+        //We shouldn't really get here.
         else{ 
           cout << "___________________SOMETHING WRONG !!!!!!!!!!!!!!"<<endl;
           NEDC++;}
-
-
         
       
       if(j==5){    
