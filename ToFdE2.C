@@ -114,17 +114,18 @@ void ToFdE2(){
       cuty = maxdE+5*merry;
       maxy = g2->GetParameter(1);
 
-
-      //cout<<"i: "<<i<<" j :"<<j<<endl;
-      //cout<<"Amp: "<<g1->GetParameter(0) <<" "<< g2->GetParameter(0)<<endl;
+      if(abs(g1->GetParameter(0))<200 || abs(g2->GetParameter(0)<200)){
+      cout<<"i: "<<i+1<<" j: "<<j+1<<endl;
+      cout<<"Amp: "<<g1->GetParameter(0) <<" "<< g2->GetParameter(0)<<endl;
       //cout<<"mean: "<<g1->GetParameter(1) <<" "<< g2->GetParameter(1)<<endl;
       //cout<<"std: "<<merrx<<" "<<merry<<endl;
       //cout<<"cut: "<<cutx<<" "<<cuty<<endl;
-      //cout<<"Number: "<<hdE->GetEntries()<<endl;
-
+      cout<<"Number: "<<hdE->GetEntries()<<endl;
+      cout<<"Ratio:"<<hdE->GetEntries()/g1->GetParameter(0) << " "<<hdE->GetEntries()/g2->GetParameter(0)<<endl<<endl;
+      }
 
       //Check if there is a distinct peak.
-      if(abs(g1->GetParameter(0))<200 || abs(g2->GetParameter(0)<200))
+      if(abs(g1->GetParameter(0))<100 || abs(g2->GetParameter(0)<100))
         noPeakFlag=1;
       else
         noPeakFlag=0;
@@ -156,6 +157,8 @@ void ToFdE2(){
       if(noPeakFlag==0){
   	  TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
       g0->SetParameters(1,1,xm,ym);
+      g0->FixParameter(2,xm);
+      g0->FixParameter(3,ym);
       pp[i][j] = hdE->ProfileX();
       pp[i][j]->Fit("g0","IQ","",cutx, 38.);
       }
@@ -168,9 +171,7 @@ void ToFdE2(){
       g0->SetParameters(1,1);
 
       pp[i][j] = hdE->ProfileX();
-
-      //ACHTUNG! Arbitralnie wybrane 20 !!!
-      pp[i][j]->Fit("g0","IQ","",20., 38.);
+      pp[i][j]->Fit("g0","IQ","",maxt, 38.);
 
       }
 
@@ -184,13 +185,13 @@ void ToFdE2(){
           pp[i][j]->GetFunction("g0")->Draw("same");
           FailCounter=0;
         }
-        //If there is no peak, previous function is drawn in red on its canvas and on top of the current canvas.
+        //If there is no peak, previous function is drawn in red (commented) on its canvas and on top of the current canvas.
         else if(noPeakFlag==1 && j!=0 && FailCounter<=j){
           FailCounter++;
           NEDC++;
           //cout<<"Achtung! "<<i+1<<" "<<j+1<<" Fail no.: "<<FailCounter<<" Total Fails: "<<NEDC<<endl;
-          pp[i][j-FailCounter]->GetFunction("g0")->SetLineColor(2);
-          pp[i][j-FailCounter]->GetFunction("g0")->Draw("same");
+          //pp[i][j-FailCounter]->GetFunction("g0")->SetLineColor(2);
+          //pp[i][j-FailCounter]->GetFunction("g0")->Draw("same");
           pp[i][j]->GetFunction("g0")->Draw("same");
         }
         //If there is no peak and we are in the first bin, function is drawn in green.
