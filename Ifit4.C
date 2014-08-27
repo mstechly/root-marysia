@@ -116,7 +116,7 @@ void fcn(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag){
 void Ifit4()
 {
   file = new TFile("run41800dETIFWC1.root");
-  Bool_t IsFWC1 = kFALSE;
+  Bool_t IsFWC1 = kTRUE;
 
   TMinuit *minuit = new TMinuit(3);
   minuit->SetFCN(fcn);
@@ -146,6 +146,9 @@ void Ifit4()
   TH2D* hdEToF[6][24];
   TF1*  fFit[6][24];
   TProfile* pp[24][6];
+  TH1D* DistHist[6][24];
+  Double_t ParameterTable[6][24][3];
+  Int_t NBinsTable[6][24][4];
  
   for(Int_t el = 1; el<25; el++){
     Double_t vstart[3]; 
@@ -177,11 +180,14 @@ void Ifit4()
       else
         noPeakFlag=0;
       
+
       //cout<<"err: "<<merrx<<" "<<merry<<endl;
       //cout<<"cut: "<<cutx<<" "<<cuty<<endl;
       //Ranges of fitting 
       nbinsx = hdE->GetXaxis()->FindBin(37.);     
       nbinx0 = hdE->GetXaxis()->FindBin(maxt+5*merrx);
+
+
       //nbinx0 =  hdE->GetXaxis()->FindBin(maxt-3*merrx);
       Int_t up = hdE->GetYaxis()->GetNbins();
       nbinsy = up;            
@@ -192,13 +198,17 @@ void Ifit4()
 	       nbinsy = i+1; 
 	       }
       }
+      NBinsTable[bin-1][el-1][0]=nbinx0;
+      NBinsTable[bin-1][el-1][1]=nbinsx;
+      NBinsTable[bin-1][el-1][2]=1;
+      NBinsTable[bin-1][el-1][3]=nbinsy;
       
       //cout<<"x range: "<<maxt+4*merrx<<" - "<<38.<<endl;
       //cout<<"Y range: "<<hdE->GetYaxis()->GetBinCenter(nbinsy)<<endl;
      
       //EDIT
-      ym = maxdE;
-      xm = hdE->GetXaxis()->GetBinCenter(hdE->ProjectionX()->GetMaximumBin());
+      ym = g2 -> GetParameter(1);
+      xm = g1 -> GetParameter(1);
 
       //cout<<" xm, ym: "<<xm<<" "<<ym<<endl;
       /*Int_t ixm, iym, izm;
@@ -246,10 +256,10 @@ void Ifit4()
       }
 
       Double_t step[3] = {0.001 ,0.1 , 10.};
-      minuit->mnparm(0, "a", vstart[0], step[0], 0,0,ierflg);
+      minuit->mnparm(0, "a", vstart[0], step[0]*100, 0,0,ierflg);
       minuit->mnparm(1, "b", vstart[1], step[1], 0,0,ierflg);
       if(noPeakFlag!=0){
-      minuit->mnparm(2, "c", vstart[2], step[2]*1000, 0,0,ierflg);
+      minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
       }
       //minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
       
@@ -277,34 +287,68 @@ void Ifit4()
       if(noPeakFlag!=0){
       minuit->mnpout(2,para2,pval[2],perr[2],plo[2],phi[2],istat);
       }
-      //
-      
+      if(noPeakFlag==0)
+        pval[2]=ym - pval[0]*xm*xm - pval[1]*xm;
+
       fFit[bin-1][el-1] = new TF1(Form("fFit_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
       fFit[bin-1][el-1]->FixParameter(2, pval[0]);
       fFit[bin-1][el-1]->FixParameter(1, pval[1]);
-      if(noPeakFlag==0)
-      fFit[bin-1][el-1]->FixParameter(0, ym - pval[0]*xm*xm - pval[1]*xm);
-      else{
       fFit[bin-1][el-1]->FixParameter(0, pval[2]);
+      if(noPeakFlag!=0)
       fFit[bin-1][el-1]->SetLineColor(2);
-      }
+      
+      ParameterTable[bin-1][el-1][0]=pval[1];
+      ParameterTable[bin-1][el-1][1]=pval[1];
+      ParameterTable[bin-1][el-1][2]=pval[0];
+
+
     }
   }
-
+/*
+  Int_t StartX, EndX, StartY, EndY;
+  Double_t CurrentX, CurrentY, CurrentW;
   TCanvas* c[24];
-  for(Int_t el=1; el<25; el++){
+  for(int i=20; i<30;i++){
+    cout<<"PT: "<<ParameterTable[1][0][0]<<" "<<ParameterTable[1][0][1]<<" "<<ParameterTable[1][0][2]<<endl;
+    cout<<"xc: "<<xc(i,ParameterTable[1][0][0]*i*i + ParameterTable[1][0][1]*i+ ParameterTable[1][0][2],ParameterTable[1][0])<<endl;
+  }
+*/
+
+  for(Int_t el=1; el<2; el++){
     c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
-    c[el-1]->Divide(2,3);
+    c[el-1]->Divide(4,3);
     for(Int_t bin = 1; bin<7; bin++){  
-      c[el-1]->cd(bin);
+      c[el-1]->cd(2*bin-1);
+      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),5000,40,50);
+
+      StartX=NBinsTable[bin-1][el-1][0];
+      EndX=NBinsTable[bin-1][el-1][1];
+      StartY=NBinsTable[bin-1][el-1][2];
+      EndY=NBinsTable[bin-1][el-1][3];
+      //cout<<NBinsTable[bin-1][el-1][0]<<" "<<NBinsTable[bin-1][el-1][1]<<" "<<NBinsTable[bin-1][el-1][2]<<" "<<NBinsTable[bin-1][el-1][3]<<" "<<endl;
+
+        for(Int_t i=StartX; i<=EndX; i++){
+          for(Int_t j=StartY; j<=EndY; j++){
+            CurrentX=hdEToF[bin-1][el-1]->GetXaxis()->GetBinCenter(i);
+            CurrentY=hdEToF[bin-1][el-1]->GetYaxis()->GetBinCenter(j);
+            CurrentW=hdEToF[bin-1][el-1]->GetBinContent(i,j);
+            //cout<<ParameterTable[bin-1][el-1][0]<<" "<<ParameterTable[bin-1][el-1][1]<<" "<<ParameterTable[bin-1][el-1][2]<<endl;
+            //cout<<"X: "<<CurrentX<<" Y: "<<CurrentY<<" W: "<<CurrentW<<" xc: "<<xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1])<<endl;
+            DistHist[bin-1][el-1]->Fill(xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1]),CurrentW);
+          }
+        }
       hdEToF[bin-1][el-1]->Draw("colz");
       fFit[bin-1][el-1]->Draw("same");
-            if(bin==6){    
-            //c[el-1]->SaveAs(Form("canvas%d.pdf",el));
+      c[el-1]->cd(2*bin);
+      DistHist[bin-1][el-1]->Draw("colz"); 
+
+      if(bin==6){    
+        //c[el-1]->SaveAs(Form("canvas%d.pdf",el));
       }
 
     }  
   }
+
 
 }
 
