@@ -37,13 +37,13 @@ Double_t merrx, merry;
 Double_t cutx, cuty; 
 Double_t xm, ym;
 Int_t nbinsx, nbinsy, nbinx0;
-Int_t noPeakFlag;
+Bool_t noPeakFlag;
 
 
 //______________________________________________________________________________
 Double_t func(float x ,Double_t *par){
   Double_t value;
-  if(noPeakFlag==0){
+  if(!noPeakFlag){
   value=par[0]*x*x + par[1]*x + (ym - xm*xm*par[0] - xm*par[1]);
   }
   else{
@@ -60,10 +60,14 @@ Double_t xc(float x, float y, Double_t *par){
   //  par[2] = ym - xm*xm*par[0] - xm*par[1];
   coef[3] = 2*par[0]*par[0];
   coef[2] = 3*par[0]*par[1];
-  coef[1] = 1 + par[1]*par[1] + 2*par[0]*(ym - xm*xm*par[0] - xm*par[1]) - 2*par[0]*y;
-  coef[0] = par[1]*(ym - xm*xm*par[0] - xm*par[1]) - par[1]*y - x;
-  //coef[1] = 1 + par[1]*par[1] + 2*par[0]*par[2] - 2*par[0]*y;
-  //coef[0] = par[1]*par[2] - par[1]*y - x;
+  if(!noPeakFlag){
+    coef[1] = 1 + par[1]*par[1] + 2*par[0]*(ym - xm*xm*par[0] - xm*par[1]) - 2*par[0]*y;
+    coef[0] = par[1]*(ym - xm*xm*par[0] - xm*par[1]) - par[1]*y - x;
+  }
+  else{
+    coef[1] = 1 + par[1]*par[1] + 2*par[0]*par[2] - 2*par[0]*y;
+    coef[0] = par[1]*par[2] - par[1]*y - x;
+  }
 
   complex = TMath::RootsCubic(coef,xout[0],xout[1],xout[2]);
   if(complex){
@@ -145,13 +149,16 @@ void Ifit4()
 
   TH2D* hdEToF[6][24];
   TF1*  fFit[6][24];
+  TF1*  fFitP[6][24];
   TProfile* pp[24][6];
+  TMinuit *minuit; 
+  Double_t vstart[3]; 
+
   TH1D* DistHist[6][24];
   Double_t ParameterTable[6][24][3];
   Int_t NBinsTable[6][24][4];
  
   for(Int_t el = 1; el<25; el++){
-    Double_t vstart[3]; 
     for(Int_t bin = 1; bin<7; bin++){
        
       hdEToF[bin-1][el-1] = (TH2D*)file->Get(Form("hToFFWCdEFWC_bin%02d_ifwc%02d",bin,el));
@@ -169,17 +176,19 @@ void Ifit4()
       Int_t BinUp = hdE->GetXaxis()->FindBin(maxt+2.5);
       Double_t maxy = hdE->ProjectionY()->GetMaximumBin();
       Double_t maxdE = hdE->GetYaxis()->GetBinCenter(maxy);
-      hdE->ProjectionY("hproj2",BinDown,BinUp)->Fit("g2", "IQ", "", maxdE-500., maxdE+500);
+      hdE->ProjectionY("hproj2",BinDown,BinUp)->Fit("g2", "IQ", "", maxdE-500., maxdE+500.);
       merry = g2->GetParameter(2);
       cuty = maxdE+5*merry;
-      //EDIT
-      maxy = g2->GetParameter(1);
-      //EDIT
-      if(abs(g1->GetParameter(0))<100 || abs(g2->GetParameter(0)<100) || hdE->GetEntries()<1000)
-        noPeakFlag=1;
+
+
+      xm = g1 -> GetParameter(1);
+      ym = g2 -> GetParameter(1);
+      //Diffrent than in Marysia's file!
+      if(abs(g1->GetParameter(0))<50 || abs(g2->GetParameter(0)<50) || hdE->GetEntries()<1000)
+        noPeakFlag=kTRUE;
       else
-        noPeakFlag=0;
-      
+        noPeakFlag=kFALSE;
+            
 
       //cout<<"err: "<<merrx<<" "<<merry<<endl;
       //cout<<"cut: "<<cutx<<" "<<cuty<<endl;
@@ -193,10 +202,10 @@ void Ifit4()
       nbinsy = up;            
       Int_t nentr = hdE->GetEntries();
       for(Int_t i=0; i<nbinsy; i++){
-	       if(i<maxy) continue;
-	       if(hdE->ProjectionX("hproj",i+1,i+1)->GetEntries()<0.0005*nentr){
-	       nbinsy = i+1; 
-	       }
+         if(i<maxy) continue;
+         if(hdE->ProjectionX("hproj",i+1,i+1)->GetEntries()<0.0005*nentr){
+         nbinsy = i+1; 
+         }
       }
       NBinsTable[bin-1][el-1][0]=nbinx0;
       NBinsTable[bin-1][el-1][1]=nbinsx;
@@ -207,8 +216,7 @@ void Ifit4()
       //cout<<"Y range: "<<hdE->GetYaxis()->GetBinCenter(nbinsy)<<endl;
      
       //EDIT
-      ym = g2 -> GetParameter(1);
-      xm = g1 -> GetParameter(1);
+   
 
       //cout<<" xm, ym: "<<xm<<" "<<ym<<endl;
       /*Int_t ixm, iym, izm;
@@ -217,7 +225,7 @@ void Ifit4()
       */
       //Fit to profile - start parameters
       //EDIT
-     if(noPeakFlag==0){
+     if(!noPeakFlag){
       TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
       g0->SetParameters(1,1,xm,ym);
       g0->FixParameter(2,xm);
@@ -245,9 +253,9 @@ void Ifit4()
       
       // Set starting values and step sizes for parameters
       //EDIT
-      if(noPeakFlag==0){
-	     vstart[0] = g0->GetParameter(0);
-	     vstart[1] = g0->GetParameter(1);
+      if(!noPeakFlag){
+       vstart[0] = g0->GetParameter(0);
+       vstart[1] = g0->GetParameter(1);
       }
       else{
        vstart[0] = 0;
@@ -258,7 +266,7 @@ void Ifit4()
       Double_t step[3] = {0.001 ,0.1 , 10.};
       minuit->mnparm(0, "a", vstart[0], step[0]*100, 0,0,ierflg);
       minuit->mnparm(1, "b", vstart[1], step[1], 0,0,ierflg);
-      if(noPeakFlag!=0){
+      if(noPeakFlag){
       minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
       }
       //minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
@@ -284,17 +292,17 @@ void Ifit4()
       
       minuit->mnpout(0,para0,pval[0],perr[0],plo[0],phi[0],istat);
       minuit->mnpout(1,para1,pval[1],perr[1],plo[1],phi[1],istat);
-      if(noPeakFlag!=0){
+      if(noPeakFlag){
       minuit->mnpout(2,para2,pval[2],perr[2],plo[2],phi[2],istat);
       }
-      if(noPeakFlag==0)
+      if(!noPeakFlag)
         pval[2]=ym - pval[0]*xm*xm - pval[1]*xm;
 
       fFit[bin-1][el-1] = new TF1(Form("fFit_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
       fFit[bin-1][el-1]->FixParameter(2, pval[0]);
       fFit[bin-1][el-1]->FixParameter(1, pval[1]);
       fFit[bin-1][el-1]->FixParameter(0, pval[2]);
-      if(noPeakFlag!=0)
+      if(noPeakFlag)
       fFit[bin-1][el-1]->SetLineColor(2);
       
       ParameterTable[bin-1][el-1][0]=pval[1];
@@ -304,22 +312,17 @@ void Ifit4()
 
     }
   }
-/*
+
   Int_t StartX, EndX, StartY, EndY;
   Double_t CurrentX, CurrentY, CurrentW;
-  TCanvas* c[24];
-  for(int i=20; i<30;i++){
-    cout<<"PT: "<<ParameterTable[1][0][0]<<" "<<ParameterTable[1][0][1]<<" "<<ParameterTable[1][0][2]<<endl;
-    cout<<"xc: "<<xc(i,ParameterTable[1][0][0]*i*i + ParameterTable[1][0][1]*i+ ParameterTable[1][0][2],ParameterTable[1][0])<<endl;
-  }
-*/
+
 
   for(Int_t el=1; el<2; el++){
     c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
     c[el-1]->Divide(4,3);
     for(Int_t bin = 1; bin<7; bin++){  
       c[el-1]->cd(2*bin-1);
-      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),5000,40,50);
+      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),5000,-100,100);
 
       StartX=NBinsTable[bin-1][el-1][0];
       EndX=NBinsTable[bin-1][el-1][1];
@@ -351,5 +354,4 @@ void Ifit4()
 
 
 }
-
 
