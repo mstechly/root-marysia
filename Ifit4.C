@@ -145,8 +145,6 @@ void Ifit4()
    else ToFFWCTheta[i] = ToFFWC2Theta[i];
   }
 
-  //  Int_t nbin = 3;
-
   TH2D* hdEToF[6][24];
   TF1*  fFit[6][24];
   TF1*  fFitP[6][24];
@@ -183,7 +181,6 @@ void Ifit4()
       merry = g2->GetParameter(2);
       cuty = maxdE+5*merry;
 
-
       xm = g1 -> GetParameter(1);
       ym = g2 -> GetParameter(1);
       xmTable[bin-1][el-1]=xm;
@@ -192,11 +189,9 @@ void Ifit4()
       if(abs(g1->GetParameter(0))<50 || abs(g2->GetParameter(0)<50) || hdE->GetEntries()<1000)
         noPeakFlag=kTRUE;
       else
-        noPeakFlag=kFALSE;
-            
+        noPeakFlag=kFALSE;            
       noPeakTable[bin-1][el-1]=noPeakFlag;
-      //cout<<"err: "<<merrx<<" "<<merry<<endl;
-      //cout<<"cut: "<<cutx<<" "<<cuty<<endl;
+
       //Ranges of fitting 
       nbinsx = hdE->GetXaxis()->FindBin(37.);
       if(!noPeakFlag)     
@@ -204,7 +199,7 @@ void Ifit4()
       else
         nbinx0 = 1;
 
-      //nbinx0 =  hdE->GetXaxis()->FindBin(maxt-3*merrx);
+
       Int_t up = hdE->GetYaxis()->GetNbins();
       nbinsy = up;            
       Int_t nentr = hdE->GetEntries();
@@ -225,27 +220,25 @@ void Ifit4()
       minuit->SetPrintLevel(-1);
 
       pp[el-1][bin-1] = hdE->ProfileX();
-     if(!noPeakFlag){
-      TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
-      g0->SetParameter(0,0.1);
-      g0->SetParameter(1,1.);
-      g0->FixParameter(2,xm);
-      g0->FixParameter(3,ym);
-      pp[el-1][bin-1]->Fit("g0","IQ","",maxt+3*merrx, 38.);
-      vstart[0] = g0->GetParameter(0);
-      vstart[1] = g0->GetParameter(1);
-
+      if(!noPeakFlag){
+         TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
+         g0->SetParameter(0,0.1);
+         g0->SetParameter(1,1.);
+         g0->FixParameter(2,xm);
+         g0->FixParameter(3,ym);
+         pp[el-1][bin-1]->Fit("g0","IQ","",maxt+3*merrx, 38.);
+         vstart[0] = g0->GetParameter(0);
+         vstart[1] = g0->GetParameter(1);
       }
       else{
-        TF1 *g0 = new TF1("g0","pol1(0)",0,40);
-        g0->SetParameters(1.,1.);
-        pp[el-1][bin-1] = hdE->ProfileX();
-        pp[el-1][bin-1]->Fit("g0","IQ","",maxt, 38.);
+         TF1 *g0 = new TF1("g0","pol1(0)",0,40);
+         g0->SetParameters(1.,1.);
+         pp[el-1][bin-1] = hdE->ProfileX();
+         pp[el-1][bin-1]->Fit("g0","IQ","",maxt, 38.);
 
-        vstart[0] = 0;
-        vstart[1] = g0->GetParameter(1);
-        vstart[2] = g0->GetParameter(0);
-
+         vstart[0] = 0;
+         vstart[1] = g0->GetParameter(1);
+         vstart[2] = g0->GetParameter(0);
       }
 
       //initialize TMinuit with a maximum of 3 params
@@ -267,8 +260,9 @@ void Ifit4()
       if(!noPeakFlag)
         fFitP[bin-1][el-1]->FixParameter(0, ym - vstart[0]*xm*xm - vstart[1]*xm);
       else{
-       fFitP[bin-1][el-1]->FixParameter(0, vstart[2]);
+        fFitP[bin-1][el-1]->FixParameter(0, vstart[2]);
       }
+
       fFitP[bin-1][el-1]->SetLineColor(kGreen);
       // Now ready for minimization step
       arglist[0] = 1500;
@@ -279,11 +273,8 @@ void Ifit4()
       Double_t amin,edm,errdef;
       Int_t nvpar,nparx,icstat;
       minuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
-
-      //gMinuit->mnprin(3,amin);
       
       // get parameters
-      
       double pval[3],perr[3],plo[3],phi[3];
       
       TString para0,para1,para2;
@@ -349,13 +340,9 @@ void Ifit4()
             CurrentW=hdEToF[bin-1][el-1]->GetBinContent(i,j);
             CurrentXC=xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1]);
             CurrentYC=CurrentA*pow(CurrentXC,2.0)+CurrentB*CurrentXC+CurrentC;
-            CurrentD=sqrt(pow((CurrentXC-CurrentX),2.0)+pow((CurrentA*pow(CurrentXC,2.0)+CurrentB*CurrentXC+CurrentC-CurrentY),2.0));
+            CurrentD=sqrt(pow((CurrentXC-CurrentX),2.0)+pow((CurrentYC-CurrentY),2.0));
             if(CurrentXC>CurrentX)
               CurrentD=-CurrentD;
-            if(i==StartX+10 && j==StartY+10){
-              //cout<<"elbin "<<el<<" "<<bin<<" X: "<<CurrentX<<" Y: "<<CurrentY<<" W: "<<CurrentW<<" CurrentD: "<<CurrentD;
-              //cout<<" XC: "<<CurrentXC<<" YC: "<<CurrentYC<<endl;
-            }
             DistHist[bin-1][el-1]->Fill(CurrentD,CurrentW);
             
           }
@@ -369,9 +356,8 @@ void Ifit4()
       DistHist[bin-1][el-1]->Fit("ProfileGauss", "IQ", "", 15., 15.);
       ProfileGauss->SetLineColor(2);
       ProfileGauss->Draw("same");
-      cout<<"el: "<<el<<"bin: "<<bin;
+      cout<<"el: "<<el<<" bin: "<<bin;
       cout<<" Amplitude: "<<ProfileGauss->GetParameter(0)<<" Mean: "<<ProfileGauss->GetParameter(1)<<" STD: "<<ProfileGauss->GetParameter(2)<<endl;
-
 
       if(bin==6){    
         //c[el-1]->SaveAs(Form("canvas%d.pdf",el));
