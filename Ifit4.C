@@ -64,9 +64,12 @@ Double_t xc(float x, float y, Double_t *par){
     coef[1] = 1 + par[1]*par[1] + 2*par[0]*(ym - xm*xm*par[0] - xm*par[1]) - 2*par[0]*y;
     coef[0] = par[1]*(ym - xm*xm*par[0] - xm*par[1]) - par[1]*y - x;
   }
-  else{
+  else if(par[0]!=0){
     coef[1] = 1 + par[1]*par[1] + 2*par[0]*par[2] - 2*par[0]*y;
     coef[0] = par[1]*par[2] - par[1]*y - x;
+  }
+  else{
+    return (par[1]*y+x-par[1]*par[2])/(par[1]*par[1]);
   }
 
   complex = TMath::RootsCubic(coef,xout[0],xout[1],xout[2]);
@@ -323,7 +326,7 @@ void Ifit4()
     c[el-1]->Divide(4,3);
     for(Int_t bin = 1; bin<7; bin++){
       c[el-1]->cd(2*bin-1);
-      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),10000,-5000,5000);
+      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),1000,-40,40);
 
       StartX=NBinsTable[bin-1][el-1][0];
       EndX=NBinsTable[bin-1][el-1][1];
