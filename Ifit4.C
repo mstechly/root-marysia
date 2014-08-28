@@ -364,7 +364,14 @@ void Ifit4()
       fFit[bin-1][el-1]->Draw("same");
       //fFitP[bin-1][el-1]->Draw("same");
       c[el-1]->cd(2*bin);
-      DistHist[bin-1][el-1]->Draw("colz"); 
+      DistHist[bin-1][el-1]->Draw("colz");
+      TF1* ProfileGauss = new TF1("ProfileGauss","gaus",-15.,15.);  
+      DistHist[bin-1][el-1]->Fit("ProfileGauss", "IQ", "", 15., 15.);
+      ProfileGauss->SetLineColor(2);
+      ProfileGauss->Draw("same");
+      cout<<"el: "<<el<<"bin: "<<bin;
+      cout<<" Amplitude: "<<ProfileGauss->GetParameter(0)<<" Mean: "<<ProfileGauss->GetParameter(1)<<" STD: "<<ProfileGauss->GetParameter(2)<<endl;
+
 
       if(bin==6){    
         //c[el-1]->SaveAs(Form("canvas%d.pdf",el));
