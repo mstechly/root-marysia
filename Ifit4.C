@@ -79,7 +79,7 @@ Double_t xc(float x, float y, Double_t *par){
       //d[i] = (x-xout[i])*(x-xout[i])+pow(y-par[0]*xout[i]*xout[i]-par[1]*xout[i]-(par[2]),2);
       //      cout<<"distance: "<<d[i]<<endl;
     }
-    //    cout<<"distnce min: "<<d[TMath::LocMin(3,d)]<<" xc: "<<xout[TMath::LocMin(3,d)]<<endl;   
+        //cout<<"distance min: "<<d[TMath::LocMin(3,d)]<<" xc: "<<xout[TMath::LocMin(3,d)]<<endl;   
     return xout[TMath::LocMin(3,d)];
  
   }
@@ -154,6 +154,7 @@ void Ifit4()
   TH1D* DistHist[6][24];
   Double_t ParameterTable[6][24][3];
   Int_t NBinsTable[6][24][4];
+  Bool_t noPeakTable[6][24];
  
   for(Int_t el = 1; el<25; el++){
     for(Int_t bin = 1; bin<7; bin++){
@@ -186,7 +187,7 @@ void Ifit4()
       else
         noPeakFlag=kFALSE;
             
-
+      noPeakTable[bin-1][el-1]=noPeakFlag;
       //cout<<"err: "<<merrx<<" "<<merry<<endl;
       //cout<<"cut: "<<cutx<<" "<<cuty<<endl;
       //Ranges of fitting 
@@ -299,7 +300,7 @@ void Ifit4()
          fFit[bin-1][el-1]->SetLineColor(2);
       }
       
-      ParameterTable[bin-1][el-1][0]=pval[1];
+      ParameterTable[bin-1][el-1][0]=pval[2];
       ParameterTable[bin-1][el-1][1]=pval[1];
       ParameterTable[bin-1][el-1][2]=pval[0];
 
@@ -308,30 +309,37 @@ void Ifit4()
   }
 
   Int_t StartX, EndX, StartY, EndY;
-  Double_t CurrentX, CurrentY, CurrentW;
+  Double_t CurrentX, CurrentY, CurrentW, CurrentD, CurrentXC;
+  Double_t CurrentA, CurrentB, CurrentC;
 
   TCanvas* c[24];
-  for(Int_t el=1; el<12; el++){
+  for(Int_t el=1; el<2; el++){
     c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
     c[el-1]->Divide(4,3);
-    for(Int_t bin = 1; bin<7; bin++){  
+    for(Int_t bin = 1; bin<7; bin++){
       c[el-1]->cd(2*bin-1);
-      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),5000,-100,100);
+      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),500,-5,5);
 
       StartX=NBinsTable[bin-1][el-1][0];
       EndX=NBinsTable[bin-1][el-1][1];
       StartY=NBinsTable[bin-1][el-1][2];
       EndY=NBinsTable[bin-1][el-1][3];
+      noPeakFlag=noPeakTable[bin-1][el-1];
       //cout<<NBinsTable[bin-1][el-1][0]<<" "<<NBinsTable[bin-1][el-1][1]<<" "<<NBinsTable[bin-1][el-1][2]<<" "<<NBinsTable[bin-1][el-1][3]<<" "<<endl;
+      CurrentA=ParameterTable[bin-1][el-1][0];
+      CurrentB=ParameterTable[bin-1][el-1][1];
+      CurrentC=ParameterTable[bin-1][el-1][2];
 
         for(Int_t i=StartX; i<=EndX; i++){
           for(Int_t j=StartY; j<=EndY; j++){
             CurrentX=hdEToF[bin-1][el-1]->GetXaxis()->GetBinCenter(i);
             CurrentY=hdEToF[bin-1][el-1]->GetYaxis()->GetBinCenter(j);
             CurrentW=hdEToF[bin-1][el-1]->GetBinContent(i,j);
-            //cout<<ParameterTable[bin-1][el-1][0]<<" "<<ParameterTable[bin-1][el-1][1]<<" "<<ParameterTable[bin-1][el-1][2]<<endl;
+            CurrentXC=xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1]);
+            //CurrentD=pow((CurrentXC-CurrentX),2.0)+pow((CurrentA*pow(CurrentXC,2.0)+CurrentB*CurrentXC+CurrentC-CurrentY),2.0)
+            //cout<<"PT: "<<ParameterTable[bin-1][el-1][0]<<" "<<ParameterTable[bin-1][el-1][1]<<" "<<ParameterTable[bin-1][el-1][2]<<endl;
             //cout<<"X: "<<CurrentX<<" Y: "<<CurrentY<<" W: "<<CurrentW<<" xc: "<<xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1])<<endl;
-            DistHist[bin-1][el-1]->Fill(xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1]),CurrentW);
+            //DistHist[bin-1][el-1]->Fill(CurrentD,CurrentW);
           }
         }
       hdEToF[bin-1][el-1]->Draw("colz");
