@@ -155,6 +155,8 @@ void Ifit4()
   Double_t ParameterTable[6][24][3];
   Int_t NBinsTable[6][24][4];
   Bool_t noPeakTable[6][24];
+  Double_t xmTable[6][24];
+  Double_t ymTable[6][24];
  
   for(Int_t el = 1; el<25; el++){
     for(Int_t bin = 1; bin<7; bin++){
@@ -181,6 +183,8 @@ void Ifit4()
 
       xm = g1 -> GetParameter(1);
       ym = g2 -> GetParameter(1);
+      xmTable[bin-1][el-1]=xm;
+      ymTable[bin-1][el-1]=ym;
       //Diffrent than in Marysia's file!
       if(abs(g1->GetParameter(0))<50 || abs(g2->GetParameter(0)<50) || hdE->GetEntries()<1000)
         noPeakFlag=kTRUE;
@@ -300,25 +304,26 @@ void Ifit4()
          fFit[bin-1][el-1]->SetLineColor(2);
       }
       
-      ParameterTable[bin-1][el-1][0]=pval[2];
-      ParameterTable[bin-1][el-1][1]=pval[1];
-      ParameterTable[bin-1][el-1][2]=pval[0];
+      ParameterTable[bin-1][el-1][0]=pval[0];   //a
+      ParameterTable[bin-1][el-1][1]=pval[1];   //b
+      ParameterTable[bin-1][el-1][2]=pval[2];   //c
 
 
     }
   }
 
   Int_t StartX, EndX, StartY, EndY;
-  Double_t CurrentX, CurrentY, CurrentW, CurrentD, CurrentXC;
+  Double_t CurrentX, CurrentY, CurrentW;
   Double_t CurrentA, CurrentB, CurrentC;
+  Double_t CurrentD, CurrentXC, CurrentYC;
 
   TCanvas* c[24];
-  for(Int_t el=1; el<2; el++){
+  for(Int_t el=1; el<4; el++){
     c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
     c[el-1]->Divide(4,3);
     for(Int_t bin = 1; bin<7; bin++){
       c[el-1]->cd(2*bin-1);
-      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),500,-5,5);
+      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),10000,-5000,5000);
 
       StartX=NBinsTable[bin-1][el-1][0];
       EndX=NBinsTable[bin-1][el-1][1];
@@ -329,6 +334,8 @@ void Ifit4()
       CurrentA=ParameterTable[bin-1][el-1][0];
       CurrentB=ParameterTable[bin-1][el-1][1];
       CurrentC=ParameterTable[bin-1][el-1][2];
+      xm=xmTable[bin-1][el-1];
+      ym=ymTable[bin-1][el-1];
 
         for(Int_t i=StartX; i<=EndX; i++){
           for(Int_t j=StartY; j<=EndY; j++){
@@ -336,10 +343,13 @@ void Ifit4()
             CurrentY=hdEToF[bin-1][el-1]->GetYaxis()->GetBinCenter(j);
             CurrentW=hdEToF[bin-1][el-1]->GetBinContent(i,j);
             CurrentXC=xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1]);
-            //CurrentD=pow((CurrentXC-CurrentX),2.0)+pow((CurrentA*pow(CurrentXC,2.0)+CurrentB*CurrentXC+CurrentC-CurrentY),2.0)
-            //cout<<"PT: "<<ParameterTable[bin-1][el-1][0]<<" "<<ParameterTable[bin-1][el-1][1]<<" "<<ParameterTable[bin-1][el-1][2]<<endl;
-            //cout<<"X: "<<CurrentX<<" Y: "<<CurrentY<<" W: "<<CurrentW<<" xc: "<<xc(CurrentX,CurrentY,ParameterTable[bin-1][el-1])<<endl;
-            //DistHist[bin-1][el-1]->Fill(CurrentD,CurrentW);
+            CurrentYC=CurrentA*pow(CurrentXC,2.0)+CurrentB*CurrentXC+CurrentC;
+            CurrentD=sqrt(pow((CurrentXC-CurrentX),2.0)+pow((CurrentA*pow(CurrentXC,2.0)+CurrentB*CurrentXC+CurrentC-CurrentY),2.0));
+            if(CurrentXC>CurrentX)
+              CurrentD=-CurrentD;
+           // cout<<"elbin "<<el<<" "<<bin<<" X: "<<CurrentX<<" Y: "<<CurrentY<<" W: "<<CurrentW;//<<" CurrentD: "<<CurrentD;
+            //cout<<" XC: "<<CurrentXC<<" YC: "<<CurrentYC<<endl;
+            DistHist[bin-1][el-1]->Fill(CurrentD,CurrentW);
           }
         }
       hdEToF[bin-1][el-1]->Draw("colz");
