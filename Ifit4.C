@@ -198,15 +198,17 @@ void Ifit4()
       //cout<<"err: "<<merrx<<" "<<merry<<endl;
       //cout<<"cut: "<<cutx<<" "<<cuty<<endl;
       //Ranges of fitting 
-      nbinsx = hdE->GetXaxis()->FindBin(37.);     
-      nbinx0 = hdE->GetXaxis()->FindBin(maxt+5*merrx);
-
+      nbinsx = hdE->GetXaxis()->FindBin(37.);
+      if(!noPeakFlag)     
+        nbinx0 = hdE->GetXaxis()->FindBin(maxt+5*merrx);
+      else
+        nbinx0 = 1;
 
       //nbinx0 =  hdE->GetXaxis()->FindBin(maxt-3*merrx);
       Int_t up = hdE->GetYaxis()->GetNbins();
       nbinsy = up;            
       Int_t nentr = hdE->GetEntries();
-      //PYTANIE DO MARYSI!
+
       for(Int_t i=0; i<nbinsy; i++){
          if(i<maxy) continue;
          if(hdE->ProjectionX("hproj",i+1,i+1)->GetEntries()<0.0005*nentr){
@@ -294,8 +296,8 @@ void Ifit4()
         minuit->mnpout(2,para2,pval[2],perr[2],plo[2],phi[2],istat);
       }
       if(!noPeakFlag)
-        //PACZEMU Z TEGO REZYGNOWAĆ?
-        pval[2]=ym - pval[0]*xm*xm - pval[1]*xm;
+          //Nie działa bez tego :()
+          pval[2]=ym - pval[0]*xm*xm - pval[1]*xm;
 
       fFit[bin-1][el-1] = new TF1(Form("fFit_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
       fFit[bin-1][el-1]->FixParameter(2, pval[0]);
@@ -321,24 +323,24 @@ void Ifit4()
   Double_t CurrentD, CurrentXC, CurrentYC;
 
   TCanvas* c[24];
-  for(Int_t el=1; el<4; el++){
+  for(Int_t el=1; el<25; el++){
     c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
     c[el-1]->Divide(4,3);
     for(Int_t bin = 1; bin<7; bin++){
       c[el-1]->cd(2*bin-1);
-      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),1000,-40,40);
+      DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),150,-15,15);
 
       StartX=NBinsTable[bin-1][el-1][0];
       EndX=NBinsTable[bin-1][el-1][1];
       StartY=NBinsTable[bin-1][el-1][2];
       EndY=NBinsTable[bin-1][el-1][3];
       noPeakFlag=noPeakTable[bin-1][el-1];
-      //cout<<NBinsTable[bin-1][el-1][0]<<" "<<NBinsTable[bin-1][el-1][1]<<" "<<NBinsTable[bin-1][el-1][2]<<" "<<NBinsTable[bin-1][el-1][3]<<" "<<endl;
       CurrentA=ParameterTable[bin-1][el-1][0];
       CurrentB=ParameterTable[bin-1][el-1][1];
       CurrentC=ParameterTable[bin-1][el-1][2];
       xm=xmTable[bin-1][el-1];
       ym=ymTable[bin-1][el-1];
+
 
         for(Int_t i=StartX; i<=EndX; i++){
           for(Int_t j=StartY; j<=EndY; j++){
@@ -350,9 +352,12 @@ void Ifit4()
             CurrentD=sqrt(pow((CurrentXC-CurrentX),2.0)+pow((CurrentA*pow(CurrentXC,2.0)+CurrentB*CurrentXC+CurrentC-CurrentY),2.0));
             if(CurrentXC>CurrentX)
               CurrentD=-CurrentD;
-           // cout<<"elbin "<<el<<" "<<bin<<" X: "<<CurrentX<<" Y: "<<CurrentY<<" W: "<<CurrentW;//<<" CurrentD: "<<CurrentD;
-            //cout<<" XC: "<<CurrentXC<<" YC: "<<CurrentYC<<endl;
+            if(i==StartX+10 && j==StartY+10){
+              //cout<<"elbin "<<el<<" "<<bin<<" X: "<<CurrentX<<" Y: "<<CurrentY<<" W: "<<CurrentW<<" CurrentD: "<<CurrentD;
+              //cout<<" XC: "<<CurrentXC<<" YC: "<<CurrentYC<<endl;
+            }
             DistHist[bin-1][el-1]->Fill(CurrentD,CurrentW);
+            
           }
         }
       hdEToF[bin-1][el-1]->Draw("colz");
