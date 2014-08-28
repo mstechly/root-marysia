@@ -122,9 +122,6 @@ void Ifit4()
   file = new TFile("run41800dETIFWC1.root");
   Bool_t IsFWC1 = kTRUE;
 
-  TMinuit *minuit = new TMinuit(3);
-  minuit->SetFCN(fcn);
-  minuit->SetPrintLevel(-1);
   Double_t arglist[10];
   Int_t ierflg;      
      
@@ -201,6 +198,7 @@ void Ifit4()
       Int_t up = hdE->GetYaxis()->GetNbins();
       nbinsy = up;            
       Int_t nentr = hdE->GetEntries();
+      //PYTANIE DO MARYSI!
       for(Int_t i=0; i<nbinsy; i++){
          if(i<maxy) continue;
          if(hdE->ProjectionX("hproj",i+1,i+1)->GetEntries()<0.0005*nentr){
@@ -212,38 +210,32 @@ void Ifit4()
       NBinsTable[bin-1][el-1][2]=1;
       NBinsTable[bin-1][el-1][3]=nbinsy;
       
-      //cout<<"x range: "<<maxt+4*merrx<<" - "<<38.<<endl;
-      //cout<<"Y range: "<<hdE->GetYaxis()->GetBinCenter(nbinsy)<<endl;
-     
-      //EDIT
-   
+      minuit = new TMinuit(3);
+      minuit->SetFCN(fcn);
+      minuit->SetPrintLevel(-1);
 
-      //cout<<" xm, ym: "<<xm<<" "<<ym<<endl;
-      /*Int_t ixm, iym, izm;
-      hdE->GetMaximumBin(ixm,iym,izm);
-      cout<<"2nd xm, ym: "<<hdE->GetXaxis()->GetBinCenter(ixm)<<" "<<hdE->GetYaxis()->GetBinCenter(iym)<<endl;
-      */
-      //Fit to profile - start parameters
-      //EDIT
+      pp[el-1][bin-1] = hdE->ProfileX();
      if(!noPeakFlag){
       TF1 *g0 = new TF1("g0","[0]*x*x + [1]*x + ([3] - [2]*[2]*[0] - [2]*[1])",0,40);
-      g0->SetParameters(1,1,xm,ym);
+      g0->SetParameter(0,0.1);
+      g0->SetParameter(1,1.);
       g0->FixParameter(2,xm);
       g0->FixParameter(3,ym);
-      pp[el-1][bin-1] = hdE->ProfileX();
-      pp[el-1][bin-1]->Fit("g0","IQ","",maxt+1*merrx, 38.);
-      /*cout<<"parameters for el: "<<el<<" bin: "<<bin<<endl;
-      cout<<g0->GetParameter(0)<<endl;
-      cout<<g0->GetParameter(1)<<endl;
-      cout<<g0->GetParameter(2)<<endl;
-      cout<<g0->GetParameter(3)<<endl<<endl;*/
+      pp[el-1][bin-1]->Fit("g0","IQ","",maxt+3*merrx, 38.);
+      vstart[0] = g0->GetParameter(0);
+      vstart[1] = g0->GetParameter(1);
 
       }
       else{
-      TF1 *g0 = new TF1("g0","pol1(0)",0,40);
-      g0->SetParameters(1,1);
-      pp[el-1][bin-1] = hdE->ProfileX();
-      pp[el-1][bin-1]->Fit("g0","IQ","",maxt, 38.);
+        TF1 *g0 = new TF1("g0","pol1(0)",0,40);
+        g0->SetParameters(1.,1.);
+        pp[el-1][bin-1] = hdE->ProfileX();
+        pp[el-1][bin-1]->Fit("g0","IQ","",maxt, 38.);
+
+        vstart[0] = 0;
+        vstart[1] = g0->GetParameter(1);
+        vstart[2] = g0->GetParameter(0);
+
       }
 
       //initialize TMinuit with a maximum of 3 params
@@ -251,35 +243,33 @@ void Ifit4()
       arglist[0] = 1;
       minuit->mnexcm("SET ERR", arglist ,1,ierflg);
       
-      // Set starting values and step sizes for parameters
-      //EDIT
-      if(!noPeakFlag){
-       vstart[0] = g0->GetParameter(0);
-       vstart[1] = g0->GetParameter(1);
-      }
-      else{
-       vstart[0] = 0;
-       vstart[1] = g0->GetParameter(1);
-       vstart[2] = g0->GetParameter(0);
-      }
-
-      Double_t step[3] = {0.001 ,0.1 , 10.};
-      minuit->mnparm(0, "a", vstart[0], step[0]*100, 0,0,ierflg);
+      Double_t step[3] = {0.01 ,0.1 , 10.};
+      minuit->mnparm(0, "a", vstart[0], step[0], 0,0,ierflg);
       minuit->mnparm(1, "b", vstart[1], step[1], 0,0,ierflg);
       if(noPeakFlag){
-      minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
+        minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
       }
-      //minuit->mnparm(2, "c", vstart[2], step[2], 0,0,ierflg);
-      
+
+      fFitP[bin-1][el-1] = new TF1(Form("fFitP_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
+      fFitP[bin-1][el-1]->FixParameter(2, vstart[0]);
+      fFitP[bin-1][el-1]->FixParameter(1, vstart[1]);
+
+      if(!noPeakFlag)
+        fFitP[bin-1][el-1]->FixParameter(0, ym - vstart[0]*xm*xm - vstart[1]*xm);
+      else{
+       fFitP[bin-1][el-1]->FixParameter(0, vstart[2]);
+      }
+      fFitP[bin-1][el-1]->SetLineColor(kGreen);
       // Now ready for minimization step
       arglist[0] = 1500;
-      //arglist[1] = 1;
-      minuit->mnexcm("MIGRAD", arglist ,1,ierflg);
-      
+      arglist[1] = 0.1;
+      minuit->mnexcm("MIGRAD", arglist ,2,ierflg);
+
       // Print results
       Double_t amin,edm,errdef;
       Int_t nvpar,nparx,icstat;
       minuit->mnstat(amin,edm,errdef,nvpar,nparx,icstat);
+
       //gMinuit->mnprin(3,amin);
       
       // get parameters
@@ -293,17 +283,21 @@ void Ifit4()
       minuit->mnpout(0,para0,pval[0],perr[0],plo[0],phi[0],istat);
       minuit->mnpout(1,para1,pval[1],perr[1],plo[1],phi[1],istat);
       if(noPeakFlag){
-      minuit->mnpout(2,para2,pval[2],perr[2],plo[2],phi[2],istat);
+        minuit->mnpout(2,para2,pval[2],perr[2],plo[2],phi[2],istat);
       }
       if(!noPeakFlag)
+        //PACZEMU Z TEGO REZYGNOWAĆ?
         pval[2]=ym - pval[0]*xm*xm - pval[1]*xm;
 
       fFit[bin-1][el-1] = new TF1(Form("fFit_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
       fFit[bin-1][el-1]->FixParameter(2, pval[0]);
       fFit[bin-1][el-1]->FixParameter(1, pval[1]);
-      fFit[bin-1][el-1]->FixParameter(0, pval[2]);
-      if(noPeakFlag)
-      fFit[bin-1][el-1]->SetLineColor(2);
+      if(!noPeakFlag)
+         fFit[bin-1][el-1]->FixParameter(0, ym - pval[0]*xm*xm - pval[1]*xm);
+      else{
+         fFit[bin-1][el-1]->FixParameter(0, pval[2]);
+         fFit[bin-1][el-1]->SetLineColor(2);
+      }
       
       ParameterTable[bin-1][el-1][0]=pval[1];
       ParameterTable[bin-1][el-1][1]=pval[1];
@@ -316,8 +310,8 @@ void Ifit4()
   Int_t StartX, EndX, StartY, EndY;
   Double_t CurrentX, CurrentY, CurrentW;
 
-
-  for(Int_t el=1; el<2; el++){
+  TCanvas* c[24];
+  for(Int_t el=1; el<12; el++){
     c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
     c[el-1]->Divide(4,3);
     for(Int_t bin = 1; bin<7; bin++){  
@@ -342,6 +336,7 @@ void Ifit4()
         }
       hdEToF[bin-1][el-1]->Draw("colz");
       fFit[bin-1][el-1]->Draw("same");
+      //fFitP[bin-1][el-1]->Draw("same");
       c[el-1]->cd(2*bin);
       DistHist[bin-1][el-1]->Draw("colz"); 
 
@@ -354,4 +349,3 @@ void Ifit4()
 
 
 }
-
