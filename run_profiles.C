@@ -101,13 +101,14 @@ string HelpTable[10];
 
 
 //MAIN HISTOGRAM CREATING PART
+	Bool_t DrawTrigger=kFALSE;
 
 	file = new TFile("run41800dETIFWC1.root");
 	TH2D* hdEToF[6][24];
-  	TCanvas* c[24];
+  	TCanvas* c[25];
   	TH1D* DistHist[6][24];
 	TF1*  fFit[6][24];
-
+	TH1D* MeanHist;
 
 
 	Int_t StartX, EndX, StartY, EndY;
@@ -115,12 +116,18 @@ string HelpTable[10];
   	Double_t CurrentA, CurrentB, CurrentC;
   	Double_t CurrentD, CurrentXC, CurrentYC;
 
+	MeanHist = new TH1D("MeanHist","MeanHist",100,-5,5);
+
+
   	for(Int_t el=1; el<25; el++){
+  		if(DrawTrigger)
     	c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
+    	if(DrawTrigger)
     	c[el-1]->Divide(4,3);
     	for(Int_t bin = 1; bin<7; bin++){
 
     		hdEToF[bin-1][el-1] = (TH2D*)file->Get(Form("hToFFWCdEFWC_bin%02d_ifwc%02d",bin,el));
+    		if(DrawTrigger)
     		c[el-1]->cd(2*bin-1);
       		DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),150,-15,15);
      		fFit[bin-1][el-1] = new TF1(Form("fFit_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
@@ -156,22 +163,33 @@ string HelpTable[10];
             
           		}
         	}
+        	if(DrawTrigger)
       		hdEToF[bin-1][el-1]->Draw("colz");
+      		if(DrawTrigger)
       		fFit[bin-1][el-1]->Draw("same");
-
+			if(DrawTrigger)
       		c[el-1]->cd(2*bin);
+      		if(DrawTrigger)
       		DistHist[bin-1][el-1]->Draw("colz");
       		TF1* ProfileGauss = new TF1("ProfileGauss","gaus",-15.,15.);  
       		DistHist[bin-1][el-1]->Fit("ProfileGauss", "IQ", "", 15., 15.);
       		ProfileGauss->SetLineColor(2);
+			if(DrawTrigger)
       		ProfileGauss->Draw("same");
-      		cout<<"el: "<<el<<" bin: "<<bin;
-      		cout<<" Amplitude: "<<ProfileGauss->GetParameter(0)<<" Mean: "<<ProfileGauss->GetParameter(1)<<" STD: "<<ProfileGauss->GetParameter(2)<<endl;
-
+      		//cout<<"el: "<<el<<" bin: "<<bin;
+      		//cout<<" Amplitude: "<<ProfileGauss->GetParameter(0)<<" Mean: "<<ProfileGauss->GetParameter(1)<<" STD: "<<ProfileGauss->GetParameter(2)<<endl;
+      		MeanHist->Fill(ProfileGauss->GetParameter(1));
       		if(bin==6){    
         		//c[el-1]->SaveAs(Form("canvas%d.pdf",el));
       		}
 		}
 	}
+	if(DrawTrigger);
+	c[24] = new TCanvas("MeanCanv","MeanCanv",600,400);
+	if(DrawTrigger);
+	c[24]->cd();
+	if(DrawTrigger);
+	MeanHist->Draw();
 	parametersFile.close();
+
 }
