@@ -65,7 +65,7 @@ Bool_t noPeakTable[6][24];
 Double_t xmTable[6][24];
 Double_t ymTable[6][24];
 
-ifstream parametersFile ( "parametersFile.csv" ); // declare file stream: http://www.cplusplus.com/reference/iostream/ifstream/
+ifstream parametersFile ( "parametersFile.csv" ); 
 string value;
 Int_t FileRow=0;
 Int_t FileCol=0;
@@ -77,10 +77,9 @@ string HelpTable[10];
 	for(Int_t j=0; j<24; j++){
 		for(Int_t i=0; i<6; i++){
 			for(Int_t k=0; k<10; k++){
-				getline ( parametersFile, value, ',' ); // read a string until next comma: http://www.cplusplus.com/reference/string/getline/
+				getline ( parametersFile, value, ',' );
     			//cout << string( value, 0, value.length() )<<" "; // display value removing the first and the last character from it
     			HelpTable[k]=value;
-    			//cout<<" "<<i<<" "<<j<<" "<<k<<" "<<HelpTable[k]<<endl;
 			}
 			xmTable[i][j]=atof(HelpTable[0].c_str());
 			ymTable[i][j]=atof(HelpTable[1].c_str());
@@ -94,21 +93,16 @@ string HelpTable[10];
 			ParameterTable[i][j][2]=atof(HelpTable[9].c_str());
 		}	
 	}
-    
-
-
-//hdEToF z każdego runu
-
 
 //MAIN HISTOGRAM CREATING PART
-	Bool_t DrawTrigger=kFALSE;
+TH1D* MeanHist;
 
+	Bool_t DrawTrigger=kFALSE;
 	file = new TFile("run41800dETIFWC1.root");
 	TH2D* hdEToF[6][24];
   	TCanvas* c[25];
   	TH1D* DistHist[6][24];
 	TF1*  fFit[6][24];
-	TH1D* MeanHist;
 
 
 	Int_t StartX, EndX, StartY, EndY;
@@ -147,8 +141,6 @@ string HelpTable[10];
       		xm=xmTable[bin-1][el-1];
       		ym=ymTable[bin-1][el-1];
 
-
-
     		for(Int_t i=StartX; i<=EndX; i++){
        			for(Int_t j=StartY; j<=EndY; j++){
             		CurrentX=hdEToF[bin-1][el-1]->GetXaxis()->GetBinCenter(i);
@@ -163,6 +155,7 @@ string HelpTable[10];
             
           		}
         	}
+
         	if(DrawTrigger)
       		hdEToF[bin-1][el-1]->Draw("colz");
       		if(DrawTrigger)
@@ -184,11 +177,11 @@ string HelpTable[10];
       		}
 		}
 	}
-	if(DrawTrigger);
+	if(DrawTrigger)
 	c[24] = new TCanvas("MeanCanv","MeanCanv",600,400);
-	if(DrawTrigger);
+	if(DrawTrigger)
 	c[24]->cd();
-	if(DrawTrigger);
+	if(DrawTrigger)
 	MeanHist->Draw();
 	parametersFile.close();
 

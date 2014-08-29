@@ -51,6 +51,7 @@ Double_t func(float x ,Double_t *par){
   }
  return value;
 }
+
 //______________________________________________________________________________
 Double_t xc(float x, float y, Double_t *par){
   Bool_t complex;
@@ -122,11 +123,14 @@ void fcn(Int_t &npar, Double_t *gin, Double_t &f, Double_t *par, Int_t iflag){
 //______________________________________________________________________________
 void Ifit4()
 {
-  file = new TFile("run41800dETIFWC1.root");
-  Bool_t IsFWC1 = kTRUE;
-
-  Double_t arglist[10];
-  Int_t ierflg;      
+   file = new TFile("run41800dETIFWC1.root");
+   Bool_t IsFWC1 = kTRUE;
+   
+   ofstream parametersFile;
+   parametersFile.open("parametersFile.csv");
+   
+   Double_t arglist[10];
+   Int_t ierflg;      
      
   //ToF peak position from MC
   Double_t ToFFWC1Theta[6] =
@@ -185,8 +189,11 @@ void Ifit4()
       ym = g2 -> GetParameter(1);
       xmTable[bin-1][el-1]=xm;
       ymTable[bin-1][el-1]=ym;
-      //Diffrent than in Marysia's file!
+
+      //Different than in Marysia's file!
       if(abs(g1->GetParameter(0))<50 || abs(g2->GetParameter(0)<50) || hdE->GetEntries()<1000)
+      //if((abs(g1->GetParameter(0))<50 || abs(g2->GetParameter(0)<50) ) && bin>1) // Wersja Marysi tutaj
+
         noPeakFlag=kTRUE;
       else
         noPeakFlag=kFALSE;            
@@ -304,7 +311,6 @@ void Ifit4()
       ParameterTable[bin-1][el-1][1]=pval[1];   //b
       ParameterTable[bin-1][el-1][2]=pval[2];   //c
 
-
     }
   }
 
@@ -313,12 +319,12 @@ void Ifit4()
   Double_t CurrentA, CurrentB, CurrentC;
   Double_t CurrentD, CurrentXC, CurrentYC;
 
-  TCanvas* c[24];
+  //sTCanvas* c[24];
   for(Int_t el=1; el<25; el++){
-    c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
-    c[el-1]->Divide(4,3);
+    //c[el-1] = new TCanvas(Form("c_el%02d",el),Form("c_el%02d",el),1350,950);
+    //c[el-1]->Divide(4,3);
     for(Int_t bin = 1; bin<7; bin++){
-      c[el-1]->cd(2*bin-1);
+      //c[el-1]->cd(2*bin-1);
       DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),150,-15,15);
 
       StartX=NBinsTable[bin-1][el-1][0];
@@ -333,7 +339,7 @@ void Ifit4()
       ym=ymTable[bin-1][el-1];
 
 
-        for(Int_t i=StartX; i<=EndX; i++){
+      for(Int_t i=StartX; i<=EndX; i++){
           for(Int_t j=StartY; j<=EndY; j++){
             CurrentX=hdEToF[bin-1][el-1]->GetXaxis()->GetBinCenter(i);
             CurrentY=hdEToF[bin-1][el-1]->GetYaxis()->GetBinCenter(j);
@@ -346,18 +352,21 @@ void Ifit4()
             DistHist[bin-1][el-1]->Fill(CurrentD,CurrentW);
             
           }
-        }
+      }
+
+      parametersFile <<xm<<","<<ym<<","<<noPeakFlag<<","<<StartX<<","<<EndX<<","<<StartY<<","<<EndY<<","<<CurrentA<<","<<CurrentB<<","<<CurrentC<<","<<endl;
+
       hdEToF[bin-1][el-1]->Draw("colz");
       fFit[bin-1][el-1]->Draw("same");
       //fFitP[bin-1][el-1]->Draw("same");
       c[el-1]->cd(2*bin);
       DistHist[bin-1][el-1]->Draw("colz");
-      TF1* ProfileGauss = new TF1("ProfileGauss","gaus",-15.,15.);  
+      TF1* ProfileGauss = new TF1("ProfileGauss","gaus",-15.,15.);
       DistHist[bin-1][el-1]->Fit("ProfileGauss", "IQ", "", 15., 15.);
       ProfileGauss->SetLineColor(2);
       ProfileGauss->Draw("same");
-      cout<<"el: "<<el<<" bin: "<<bin;
-      cout<<" Amplitude: "<<ProfileGauss->GetParameter(0)<<" Mean: "<<ProfileGauss->GetParameter(1)<<" STD: "<<ProfileGauss->GetParameter(2)<<endl;
+      //cout<<"el: "<<el<<" bin: "<<bin;
+      //cout<<" Amplitude: "<<ProfileGauss->GetParameter(0)<<" Mean: "<<ProfileGauss->GetParameter(1)<<" STD: "<<ProfileGauss->GetParameter(2)<<endl;
 
       if(bin==6){    
         //c[el-1]->SaveAs(Form("canvas%d.pdf",el));
@@ -366,5 +375,6 @@ void Ifit4()
     }  
   }
 
+   parametersFile.close();
 
 }
