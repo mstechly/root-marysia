@@ -106,6 +106,8 @@ string HelpTable[10];
 	TH2D* hdEToF[6][24];
   	TCanvas* c[24];
   	TH1D* DistHist[6][24];
+	TF1*  fFit[6][24];
+
 
 
 	Int_t StartX, EndX, StartY, EndY;
@@ -121,6 +123,11 @@ string HelpTable[10];
     		hdEToF[bin-1][el-1] = (TH2D*)file->Get(Form("hToFFWCdEFWC_bin%02d_ifwc%02d",bin,el));
     		c[el-1]->cd(2*bin-1);
       		DistHist[bin-1][el-1]= new TH1D(Form("DistHist_%02d_%02d",el,bin),Form("DistHist_%02d_%02d",el,bin),150,-15,15);
+     		fFit[bin-1][el-1] = new TF1(Form("fFit_bin%02d_el%02d",bin,el), "pol2", 0., 40.); 
+     		fFit[bin-1][el-1]->FixParameter(0,ParameterTable[bin-1][el-1][2]);
+     		fFit[bin-1][el-1]->FixParameter(1,ParameterTable[bin-1][el-1][1]);
+     		fFit[bin-1][el-1]->FixParameter(2,ParameterTable[bin-1][el-1][0]);
+
 
       		StartX=NBinsTable[bin-1][el-1][0];
       		EndX=NBinsTable[bin-1][el-1][1];
@@ -150,8 +157,8 @@ string HelpTable[10];
           		}
         	}
       		hdEToF[bin-1][el-1]->Draw("colz");
-      		//fFit[bin-1][el-1]->Draw("same");
-      		//fFitP[bin-1][el-1]->Draw("same");
+      		fFit[bin-1][el-1]->Draw("same");
+
       		c[el-1]->cd(2*bin);
       		DistHist[bin-1][el-1]->Draw("colz");
       		TF1* ProfileGauss = new TF1("ProfileGauss","gaus",-15.,15.);  
